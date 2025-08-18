@@ -9,12 +9,12 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from tqdm import tqdm
 
-# Set up OpenAI API key
-# Replace 'sk-***********' with your actual OpenAI API key
-os.environ["OPENAI_API_KEY"] = "sk-***********"
-
-# You can also load from environment variable if already set
-# os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "your-default-key-here")
+# Set up OpenAI API key from environment variable
+# Make sure to set: export OPENAI_API_KEY="your-actual-api-key" in your terminal
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is not set. Please run: export OPENAI_API_KEY='your-api-key'")
+os.environ["OPENAI_API_KEY"] = openai_api_key
 
 # Initialize Milvus client, LLM, and embedding model
 # Milvus Client Configuration Options:

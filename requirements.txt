@@ -1,0 +1,9 @@
+pymilvus>=2.3.0
+langchain-openai>=0.1.0
+langchain-core>=0.2.0
+openai>=1.0.0
+mutagen>=1.47.0
+numpy>=1.24.0
+scipy>=1.11.0
+tqdm>=4.66.0
+pathlib2>=2.3.7
