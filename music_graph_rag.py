@@ -1,10 +1,15 @@
+"""
+Complete Graph RAG System for Music Collections
+Supports both local music files and Spotify data with full Milvus integration
+"""
+
 import os
 import json
 import re
 import numpy as np
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Dict, Tuple, Any, Set
+from typing import List, Dict, Tuple, Any, Set, Optional
 from scipy.sparse import csr_matrix
 import mutagen
 from mutagen.id3 import ID3NoHeaderError
@@ -15,20 +20,29 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 
 class MusicGraphRAG:
-    def __init__(self, music_directories: List[str]):
+    def __init__(self, music_directories: Optional[List[str]] = None, demo_data: Optional[List[Dict]] = None, collection_prefix: str = "music"):
         """
         Initialize the Music Graph RAG system
         
         Args:
-            music_directories: List of paths to your music directories
+            music_directories: List of paths to your music directories (for local files)
+            demo_data: Pre-built dataset (for Spotify demo or custom data)
+            collection_prefix: Prefix for Milvus collections
         """
-        self.music_directories = music_directories
+        self.music_directories = music_directories or []
+        self.demo_data = demo_data
+        self.collection_prefix = collection_prefix
         self.music_dataset = []
         self.entities = []
         self.relations = []
         self.passages = []
         self.entityid_2_relationids = defaultdict(list)
         self.relationid_2_passageids = defaultdict(list)
+        
+        # Milvus collection names
+        self.entity_col_name = f"{collection_prefix}_entities"
+        self.relation_col_name = f"{collection_prefix}_relations"  
+        self.passage_col_name = f"{collection_prefix}_passages"
         
         # Adjacency matrices for subgraph expansion
         self.entity_relation_adj = None
@@ -189,12 +203,20 @@ class MusicGraphRAG:
             "triplets": triplets
         }
     
-    def build_graph_structure(self):
-        """Build the graph structure similar to the Bernoulli example"""
-        print("Building graph structure from music data...")
+    def build_graph_structure(self, verbose: bool = True):
+        """Build the graph structure from music data or demo data"""
+        if verbose:
+            print("🔨 Building knowledge graph...")
         
-        # Scan directories first
-        self.music_dataset = self.scan_music_directories()
+        # Use demo data if provided, otherwise scan directories
+        if self.demo_data:
+            self.music_dataset = self.demo_data
+            if verbose:
+                print("   Using provided demo dataset")
+        else:
+            self.music_dataset = self.scan_music_directories()
+            if verbose:
+                print(f"   Scanned {len(self.music_directories)} directories")
         
         # Build entities, relations, and mappings
         for passage_id, dataset_info in enumerate(self.music_dataset):
@@ -226,7 +248,8 @@ class MusicGraphRAG:
                 if passage_id not in self.relationid_2_passageids[relation_id]:
                     self.relationid_2_passageids[relation_id].append(passage_id)
         
-        print(f"Built graph with {len(self.entities)} entities, {len(self.relations)} relations, and {len(self.passages)} passages")
+        if verbose:
+            print(f"   ✅ Built graph with {len(self.entities)} entities, {len(self.relations)} relations, {len(self.passages)} passages")
     
     def create_embeddings_and_store(self):
         """Create embeddings and store in Milvus following the proper pattern"""
@@ -350,7 +373,9 @@ class MusicGraphRAG:
         return query_entities[:3]  # Limit to top 3 for efficiency
     
     def _expand_subgraph(self, query_entities: List[str], query: str, 
-                        target_degree: int = 1, top_k: int = 3) -> List[str]:
+                        target_degree: int = 1, top_k: int = 3,
+                        entity_sim_filter_thresh: float = 0.0,
+                        relation_sim_filter_thresh: float = 0.0) -> List[str]:
         """
         Expand subgraph using adjacency matrices to get candidate relations
         """
@@ -390,12 +415,15 @@ class MusicGraphRAG:
         for _ in range(target_degree - 1):
             relation_adj_target_degree = relation_adj_target_degree * self.relation_adj_1_degree
 
+        # CRITICAL: Compute entity_relation_adj_target_degree properly  
         entity_relation_adj_target_degree = entity_adj_target_degree @ self.entity_relation_adj
         
         # Expand relations from relation search results
         expanded_relations_from_relation = set()
+        
         filtered_hit_relation_ids = [
             relation_res["entity"]["id"] for relation_res in relation_search_res
+            if relation_res['distance'] > relation_sim_filter_thresh
         ]
         
         for hit_relation_id in filtered_hit_relation_ids:
@@ -404,13 +432,15 @@ class MusicGraphRAG:
                     relation_adj_target_degree[hit_relation_id].nonzero()[1].tolist()
                 )
         
-        # Expand relations from entity search results
+        # Expand relations from entity search results  
         expanded_relations_from_entity = set()
-        filtered_hit_entity_ids = []
         
-        for one_entity_search_res in entity_search_res:
-            for one_entity_res in one_entity_search_res:
-                filtered_hit_entity_ids.append(one_entity_res["entity"]["id"])
+        filtered_hit_entity_ids = [
+            one_entity_res["entity"]["id"]
+            for one_entity_search_res in entity_search_res
+            for one_entity_res in one_entity_search_res
+            if one_entity_res['distance'] > entity_sim_filter_thresh
+        ]
         
         for filtered_hit_entity_id in filtered_hit_entity_ids:
             if filtered_hit_entity_id < entity_relation_adj_target_degree.shape[0]:
@@ -418,18 +448,226 @@ class MusicGraphRAG:
                     entity_relation_adj_target_degree[filtered_hit_entity_id].nonzero()[1].tolist()
                 )
         
-        # Merge expanded relations
+        # Merge the expanded relations from the relation and entity retrieval ways
         relation_candidate_ids = list(
             expanded_relations_from_relation | expanded_relations_from_entity
         )
         
-        # Get relation texts
-        relation_candidate_texts = [
-            self.relations[relation_id] for relation_id in relation_candidate_ids
+        # Get relation texts (filter valid IDs)
+        valid_candidate_pairs = [
+            (relation_id, self.relations[relation_id]) 
+            for relation_id in relation_candidate_ids
             if relation_id < len(self.relations)
         ]
         
-        return relation_candidate_texts
+        if valid_candidate_pairs:
+            relation_candidate_ids, relation_candidate_texts = zip(*valid_candidate_pairs)
+            return list(relation_candidate_texts), list(relation_candidate_ids)
+        else:
+            return [], []
+    
+    def _rerank_relations_with_llm(self, query: str, relation_candidate_texts: List[str], 
+                                 relation_candidate_ids: List[int], top_k: int = 3) -> List[int]:
+        """
+        Use LLM to rerank and select the most relevant relations using Chain-of-Thought reasoning
+        """
+        if not relation_candidate_texts:
+            return []
+        
+        # Create relation description string with CANDIDATE LIST indices (not global IDs)
+        relation_des_str = "\n".join(
+            f"[{idx}] {text}" for idx, text in enumerate(relation_candidate_texts)
+        ).strip()
+        
+        # One-shot example for music domain
+        query_prompt_one_shot_input = """I will provide you with a list of musical relationship descriptions. Your task is to select up to 3 relationships that may be useful to answer the given question about music preferences and listening habits. Please return a JSON object containing your thought process and a list of the selected relationships in order of their relevance.
+
+Question:
+What genres does Post Malone span and how does he connect to other artists?
+
+Relationship descriptions:
+[1] Post Malone spans genres Hip-Hop
+[2] Post Malone spans genres Pop
+[3] Post Malone spans genres Rock
+[4] Post Malone collaborates with Morgan Wallen
+[5] Post Malone collaborates with Juice WRLD
+[6] Post Malone represents contemporary music
+[7] Drake represents mainstream hip-hop
+[8] Taylor Swift represents pop music preferences
+"""
+        
+        query_prompt_one_shot_output = """{"thought_process": "To answer the question about Post Malone's genres and connections, I need to identify relationships that show: 1) what genres he spans, and 2) his collaborations with other artists. The most relevant relationships are those that directly mention Post Malone's genre diversity and his collaborations.", "useful_relationships": ["[1] Post Malone spans genres Hip-Hop", "[2] Post Malone spans genres Pop", "[4] Post Malone collaborates with Morgan Wallen"]}"""
+        
+        query_prompt_template = """Question:
+{question}
+
+Relationship descriptions:
+{relation_des_str}
+
+"""
+        
+        # Create the reranking prompt chain
+        rerank_prompts = ChatPromptTemplate.from_messages([
+            HumanMessage(query_prompt_one_shot_input),
+            AIMessage(query_prompt_one_shot_output),
+            HumanMessagePromptTemplate.from_template(query_prompt_template),
+        ])
+        
+        rerank_chain = (
+            rerank_prompts
+            | llm.bind(response_format={"type": "json_object"})
+            | JsonOutputParser()
+        )
+        
+        try:
+            rerank_res = rerank_chain.invoke({
+                "question": query,
+                "relation_des_str": relation_des_str
+            })
+            
+            rerank_relation_ids = []
+            rerank_relation_lines = rerank_res.get("useful_relationships", [])
+            
+            for line in rerank_relation_lines[:top_k]:  # Limit to top_k
+                try:
+                    # Extract candidate list index from format "[idx] text"
+                    start_idx = line.find("[") + 1
+                    end_idx = line.find("]")
+                    if start_idx > 0 and end_idx > start_idx:
+                        candidate_idx = int(line[start_idx:end_idx])
+                        # Map candidate index back to original relation ID
+                        if 0 <= candidate_idx < len(relation_candidate_ids):
+                            original_relation_id = relation_candidate_ids[candidate_idx]
+                            rerank_relation_ids.append(original_relation_id)
+                except (ValueError, IndexError):
+                    continue
+            
+            return rerank_relation_ids
+            
+        except Exception as e:
+            print(f"Warning: LLM reranking failed ({e}), using original order")
+            return relation_candidate_ids[:top_k]
+    
+    def _get_final_passages_from_relations(self, rerank_relation_ids: List[int], 
+                                         final_top_k: int = 2) -> List[str]:
+        """
+        Get final passages from reranked relation IDs
+        """
+        final_passages = []
+        final_passage_ids = []
+        
+        for relation_id in rerank_relation_ids:
+            if relation_id < len(self.relations) and relation_id in self.relationid_2_passageids:
+                for passage_id in self.relationid_2_passageids[relation_id]:
+                    if passage_id not in final_passage_ids and passage_id < len(self.passages):
+                        final_passage_ids.append(passage_id)
+                        final_passages.append(self.passages[passage_id])
+        return final_passages[:final_top_k]
+    
+    def _naive_rag_retrieval(self, query: str, top_k: int = 2) -> List[str]:
+        """
+        Naive RAG retrieval for comparison - direct similarity search on passages
+        """
+        query_embedding = embedding_model.embed_query(query)
+        
+        naive_passage_res = milvus_client.search(
+            collection_name=self.passage_col_name,
+            data=[query_embedding],
+            limit=top_k,
+            output_fields=["text"],
+        )[0]
+        
+        return [res["entity"]["text"] for res in naive_passage_res]
+    
+    def query_music_knowledge_with_llm_reranking(self, query: str, target_degree: int = 1,
+                                               top_k: int = 3, final_top_k: int = 2,
+                                               compare_with_naive: bool = True,
+                                               entity_sim_thresh: float = 0.0,
+                                               relation_sim_thresh: float = 0.0) -> str:
+        """
+        Complete Graph RAG with LLM reranking - the full pipeline
+        """
+        print(f"🕸️ Processing query with complete Graph RAG pipeline...")
+        
+        # Step 1: Extract entities and expand subgraph
+        query_entities = self._extract_query_entities(query)
+        print(f"📍 Extracted entities: {query_entities}")
+        
+        relation_candidate_texts, relation_candidate_ids = self._expand_subgraph(
+            query_entities, query, target_degree, top_k, entity_sim_thresh, relation_sim_thresh
+        )
+        print(f"🔍 Found {len(relation_candidate_texts)} candidate relations from subgraph expansion")
+        
+        if not relation_candidate_texts:
+            print("⚠️ No subgraph candidates found, falling back to naive RAG")
+            naive_passages = self._naive_rag_retrieval(query, final_top_k)
+            return self._generate_final_answer(query, naive_passages, "Naive RAG (fallback)")
+        
+        # Step 2: LLM Reranking - now with proper ID mapping!
+        rerank_relation_ids = self._rerank_relations_with_llm(
+            query, relation_candidate_texts, relation_candidate_ids, top_k
+        )
+        print(f"🧠 LLM reranked to {len(rerank_relation_ids)} most relevant relations")
+        
+        # Step 3: Get final passages from reranked relations
+        passages_from_graph_rag = self._get_final_passages_from_relations(
+            rerank_relation_ids, final_top_k
+        )
+        
+        # Step 4: Compare with naive RAG if requested
+        if compare_with_naive:
+            passages_from_naive_rag = self._naive_rag_retrieval(query, final_top_k)
+            
+            print("\n" + "="*60)
+            print("📊 COMPARISON: Graph RAG vs Naive RAG")
+            print("="*60)
+            print(f"📋 Passages from Naive RAG:")
+            for i, passage in enumerate(passages_from_naive_rag, 1):
+                print(f"  {i}. {passage[:150]}...")
+            
+            print(f"\n🕸️ Passages from Graph RAG:")
+            for i, passage in enumerate(passages_from_graph_rag, 1):
+                print(f"  {i}. {passage[:150]}...")
+            print("="*60)
+            
+            # Generate answers from both methods
+            answer_naive = self._generate_final_answer(query, passages_from_naive_rag, "Naive RAG")
+            answer_graph = self._generate_final_answer(query, passages_from_graph_rag, "Graph RAG")
+            
+            return f"""🔍 **Naive RAG Answer:**
+{answer_naive}
+
+🕸️ **Graph RAG Answer:**
+{answer_graph}
+
+📈 **Analysis:** Graph RAG uses subgraph expansion and LLM reranking to find more contextually relevant passages, while Naive RAG relies purely on semantic similarity."""
+        
+        else:
+            return self._generate_final_answer(query, passages_from_graph_rag, "Graph RAG")
+    
+    def _generate_final_answer(self, query: str, passages: List[str], method_name: str) -> str:
+        """Generate final answer from retrieved passages"""
+        context = "\n\n".join(passages)
+        
+        prompt = ChatPromptTemplate.from_messages([
+            (
+                "human",
+                """Use the following pieces of retrieved context about musical preferences and listening habits to answer the question. If there is not enough information in the retrieved context to answer the question, just say that you don't know.
+
+Question: {question}
+Context: {context}
+Answer:""",
+            )
+        ])
+        
+        rag_chain = prompt | llm | StrOutputParser()
+        
+        answer = rag_chain.invoke({
+            "question": query,
+            "context": context
+        })
+        
+        return f"[{method_name}] {answer}"
     
     def query_music_knowledge_advanced(self, query: str, target_degree: int = 1, 
                                      top_k: int = 3) -> str:
@@ -443,17 +681,17 @@ class MusicGraphRAG:
         print(f"Extracted entities: {query_entities}")
         
         # Expand subgraph to get candidate relations
-        relation_candidates = self._expand_subgraph(
+        relation_candidate_texts, relation_candidate_ids = self._expand_subgraph(
             query_entities, query, target_degree, top_k
         )
         
-        print(f"Found {len(relation_candidates)} candidate relations from subgraph expansion")
+        print(f"Found {len(relation_candidate_texts)} candidate relations from subgraph expansion")
         
         # If we have candidate relations, use them; otherwise fall back to simple search
-        if relation_candidates:
+        if relation_candidate_texts:
             # Get embeddings for candidate relations and find most relevant
             query_embedding = embedding_model.embed_query(query)
-            candidate_embeddings = embedding_model.embed_documents(relation_candidates)
+            candidate_embeddings = embedding_model.embed_documents(relation_candidate_texts)
             
             # Calculate similarities
             similarities = []
@@ -461,7 +699,7 @@ class MusicGraphRAG:
                 similarity = np.dot(query_embedding, candidate_emb) / (
                     np.linalg.norm(query_embedding) * np.linalg.norm(candidate_emb)
                 )
-                similarities.append((similarity, relation_candidates[i]))
+                similarities.append((similarity, relation_candidate_texts[i]))
             
             # Sort by similarity and take top results
             similarities.sort(reverse=True, key=lambda x: x[0])

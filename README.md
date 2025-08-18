@@ -1,27 +1,38 @@
 # Music Graph RAG System 🎵
 
-A Graph-based Retrieval Augmented Generation system for exploring and querying your personal music collection. This system adapts the graph RAG approach to create a knowledge graph from your music directories, allowing you to ask natural language questions about your musical interests and collection.
+A complete Graph-based Retrieval Augmented Generation system for exploring your musical taste and collection. Features **side-by-side comparison** of Naive RAG vs Graph RAG with LLM reranking, showing the power of knowledge graphs for music discovery.
 
 ## Features
 
-- 🎵 **Automatic Music Discovery**: Scans your music directories and extracts metadata from audio files
-- 🕸️ **Knowledge Graph Construction**: Creates relationships between artists, albums, genres, and songs
-- 🧠 **Semantic Search**: Uses embeddings to understand and answer natural language queries
-- 💾 **Persistent Storage**: Stores knowledge graph in Milvus vector database
-- 🎯 **Interactive Queries**: Ask questions like "What genres do I listen to most?" or "Which artists span multiple genres?"
+- 🕸️ **Complete Graph RAG Pipeline**: NER → Subgraph Expansion → LLM Reranking
+- ⚖️ **Method Comparison**: See Graph RAG vs Naive RAG results side-by-side
+- 🎵 **Music Intelligence**: Understands artists, genres, cultural connections, and musical relationships
+- 💾 **Milvus Integration**: Efficient vector storage with 3 separate collections (entities, relations, passages)
+- 🧠 **LLM Reranking**: Uses Chain-of-Thought reasoning to select most relevant relationships
+- 🎯 **Interactive Demo**: Ready-to-run with Spotify-based demo data
 
-## How It Works
+## How Graph RAG Works
 
-The system follows the same graph RAG pattern as the Bernoulli family example but applies it to music:
+Unlike traditional RAG that just searches text chunks, Graph RAG builds a knowledge graph:
 
-1. **Data Extraction**: Scans your music directories and extracts metadata from audio files
-2. **Triplet Creation**: Creates subject-predicate-object relationships like:
-   - `["The Beatles", "created album", "Abbey Road"]`
-   - `["Abbey Road", "is of genre", "Rock"]`
-   - `["The Beatles", "performs in genre", "Rock"]`
-3. **Graph Construction**: Builds entity and relation mappings similar to the original example
-4. **Embedding Generation**: Creates vector embeddings for all entities, relations, and passages
-5. **Query Processing**: Answers natural language questions using semantic search and LLM reasoning
+1. **Knowledge Graph**: Creates entities (artists, genres) and relations (collaborations, influences)
+2. **NER Extraction**: Finds relevant entities in your query
+3. **Subgraph Expansion**: Uses adjacency matrices to discover connected relationships  
+4. **Milvus Search**: Vector similarity search within the expanded subgraph
+5. **LLM Reranking**: Selects most relevant relations using reasoning
+6. **Final Answer**: Generates response from carefully selected context
+
+**Example**: Query *"What Sufi music do I like?"* → Finds Kaavish entity → Expands to Sufi relationships → Ranks by relevance → Returns rich cultural context
+
+## Technical Implementation
+
+This implementation follows the complete [Milvus Graph RAG tutorial](https://milvus.io/docs/graph_rag_with_milvus.md) with all advanced features:
+
+- **Adjacency Matrices**: Proper entity-relation, entity-entity, and relation-relation matrices using `scipy.sparse.csr_matrix`
+- **Multi-degree Expansion**: Matrix multiplication for 1-degree, 2-degree, or higher graph traversal
+- **Similarity Thresholds**: Configurable filtering with `entity_sim_thresh` and `relation_sim_thresh`
+- **Correct ID Mapping**: Proper mapping between candidate list indices and original relation IDs in LLM reranking
+- **Three-Collection Architecture**: Separate Milvus collections for optimal graph construction and retrieval
 
 ## Setup
 
@@ -49,16 +60,16 @@ The system follows the same graph RAG pattern as the Bernoulli family example bu
 
 ## Usage
 
-### Quick Start
+### Quick Demo
 ```bash
-python run_music_rag.py
+python run_demo.py
 ```
 
 This will:
-1. Scan your music directories
-2. Build the knowledge graph
-3. Create and store embeddings in Milvus
-4. Start an interactive query session
+1. Load demo dataset with your musical preferences  
+2. Build the knowledge graph (entities, relations, passages)
+3. Create embeddings and store in Milvus (3 collections)
+4. Start interactive comparison mode (Graph RAG vs Naive RAG)
 
 ### Example Queries
 
