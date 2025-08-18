@@ -75,8 +75,8 @@ This will:
 
 - "What genres of music do I listen to most?"
 - "Which artists have multiple albums in my collection?"
-- "Tell me about my jazz music collection"
-- "What albums do I have by The Beatles?"
+- "What genres does Post Malone span?"
+- "Tell me about my Pakistani artists"
 - "Show me artists that span multiple genres"
 - "What's the diversity of my music taste?"
 
@@ -84,18 +84,20 @@ This will:
 
 ```python
 from music_graph_rag import MusicGraphRAG
+from run_demo import SPOTIFY_DEMO_DATA
 
-# Initialize with your music directories
-music_rag = MusicGraphRAG(["/path/to/your/music"])
+# Initialize with demo data (currently the only supported input)
+music_rag = MusicGraphRAG(demo_data=SPOTIFY_DEMO_DATA)
 
-# Build the graph
+# Build the graph and create embeddings
 music_rag.build_graph_structure()
-
-# Create embeddings and store
 music_rag.create_embeddings_and_store()
 
-# Query your collection
-answer = music_rag.query_music_knowledge("What genres do I listen to?")
+# Query with Graph RAG vs Naive RAG comparison
+answer = music_rag.query_music_knowledge_with_llm_reranking(
+    "What genres do I listen to?", 
+    compare_with_naive=True
+)
 print(answer)
 ```
 
@@ -103,28 +105,17 @@ print(answer)
 
 - `config.py` - Configuration for OpenAI API and Milvus client
 - `music_graph_rag.py` - Main Music Graph RAG implementation
-- `run_music_rag.py` - Simple script to run the system
+- `run_demo.py` - Interactive demo script
 - `requirements.txt` - Python dependencies
-- `music_graph_data.json` - Generated graph data (after first run)
-- `milvus.db` - Local Milvus database file
+- `milvus.db` - Local Milvus database file (created on first run)
 
-## Supported Audio Formats
+## Current Data Source
 
-The system supports common audio formats including:
-- MP3 (.mp3)
-- FLAC (.flac)
-- WAV (.wav)
-- M4A (.m4a)
-- AAC (.aac)
-- OGG (.ogg)
-- WMA (.wma)
+**Note**: This implementation currently works with structured demo data only (Spotify-based musical preferences). It does **not** scan local music files or directories. The demo data includes:
 
-## Graph Structure
-
-The system creates the same type of entity-relation mappings as the Bernoulli example:
-
-- **Entities**: Artists, albums, songs, genres, directory names
-- **Relations**: Relationships like "performs", "created album", "belongs to genre", etc.
+- Artists: Post Malone, Drake, Taylor Swift, Kaavish, Abida Parveen, etc.
+- Genres: Hip-Hop, Pop, Sufi, R&B, Classic Rock, Country
+- Cultural connections and musical relationships
 - **Passages**: Descriptive text about each musical relationship
 - **Mappings**: 
   - `entityid_2_relationids`: Maps entity IDs to related relation IDs
