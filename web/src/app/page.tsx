@@ -10,14 +10,20 @@ interface Message {
 }
 
 export default function ChatWithAkriti() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hey! I'm Akriti 👋 Ask me anything about my music taste - what genres I listen to, my favorite artists, cultural connections in my collection, or anything else about my musical preferences!",
-      sender: 'akriti',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setMessages([
+      {
+        id: '1',
+        content: "Hey! I'm Akriti 👋 Ask me anything about my music taste - what genres I listen to, my favorite artists, cultural connections in my collection, or anything else about my musical preferences!",
+        sender: 'akriti',
+        timestamp: new Date()
+      }
+    ]);
+  }, []);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -84,15 +90,16 @@ export default function ChatWithAkriti() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black font-['Manrope',sans-serif] flex flex-col">
-      {/* Header */}
-      <div className="border-b border-gray-200 p-4">
-        <h1 className="text-xl font-medium">Chat with Akriti</h1>
-        <p className="text-sm text-gray-600 mt-1">Ask me about my music taste and preferences</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 text-black font-['Manrope',sans-serif] flex justify-center">
+      <div className="w-full max-w-4xl bg-white shadow-sm flex flex-col min-h-screen">
+        {/* Header */}
+        <div className="border-b border-gray-200 p-6 text-center">
+          <h1 className="text-2xl font-medium">Chat with Akriti</h1>
+          <p className="text-sm text-gray-600 mt-2">Ask me about my music taste • Graph RAG vs Naive RAG comparison</p>
+        </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -105,14 +112,36 @@ export default function ChatWithAkriti() {
                   : 'bg-gray-50 text-black border border-gray-200'
               }`}
             >
-              <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-                {message.content}
+              <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                {message.sender === 'akriti' ? (
+                  <div dangerouslySetInnerHTML={{
+                    __html: message.content
+                      .replace(/🕸️ Processing query with complete Graph RAG pipeline\.\.\./g, '<div class="bg-blue-50 p-3 rounded mb-4 border-l-4 border-blue-500"><strong>🔍 Processing Query</strong></div>')
+                      .replace(/📍 Extracted entities: (.+)/g, '<div class="text-sm text-gray-600 mb-1">• Found entities: <strong>$1</strong></div>')
+                      .replace(/🔍 Found (\d+) candidate relations from subgraph expansion/g, '<div class="text-sm text-gray-600 mb-1">• Graph expansion: <strong>$1 relations</strong></div>')
+                      .replace(/🧠 LLM reranked to (\d+) most relevant relations/g, '<div class="text-sm text-gray-600 mb-4">• Reranked to top <strong>$1</strong></div>')
+                      .replace(/={60}/g, '<div class="border-t border-gray-200 my-6"></div>')
+                      .replace(/📊 COMPARISON: Graph RAG vs Naive RAG/g, '<h3 class="text-lg font-semibold mb-4 pb-2 border-b">📊 Results Comparison</h3>')
+                      .replace(/📋 Passages from Naive RAG:/g, '<div class="bg-gray-50 p-4 rounded-lg mb-4"><h4 class="font-medium text-gray-700 mb-3">📋 Naive RAG</h4>')
+                      .replace(/🕸️ Passages from Graph RAG:/g, '</div><div class="bg-blue-50 p-4 rounded-lg mb-4"><h4 class="font-medium text-blue-700 mb-3">🕸️ Graph RAG</h4>')
+                      .replace(/🔍 \*\*Naive RAG Answer:\*\*/g, '</div><div class="bg-white border-l-4 border-gray-400 p-4 mb-4"><h4 class="font-semibold text-gray-700 mb-3">Naive RAG</h4>')
+                      .replace(/🕸️ \*\*Graph RAG Answer:\*\*/g, '</div><div class="bg-white border-l-4 border-blue-500 p-4 mb-4"><h4 class="font-semibold text-blue-700 mb-3">Graph RAG</h4>')
+                      .replace(/📈 \*\*Analysis:\*\*/g, '</div><div class="bg-green-50 p-4 rounded-lg border border-green-200"><h4 class="font-semibold text-green-700 mb-2">Why Graph RAG?</h4>')
+                      .replace(/\[Naive RAG\]/g, '')
+                      .replace(/\[Graph RAG\]/g, '')
+                      + '</div>'
+                  }} />
+                ) : (
+                  <div className="font-mono">{message.content}</div>
+                )}
               </div>
-              <p className={`text-xs mt-2 ${
-                message.sender === 'user' ? 'text-gray-300' : 'text-gray-500'
-              }`}>
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+              {isClient && (
+                <p className={`text-xs mt-2 ${
+                  message.sender === 'user' ? 'text-gray-300' : 'text-gray-500'
+                }`}>
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -131,8 +160,8 @@ export default function ChatWithAkriti() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-200 p-4">
+        {/* Input */}
+        <div className="border-t border-gray-200 p-6">
         <div className="flex space-x-2">
           <input
             type="text"
@@ -156,9 +185,9 @@ export default function ChatWithAkriti() {
         <div className="mt-3 flex flex-wrap gap-2">
           {[
             "What genres do you listen to?",
-            "Tell me about your Sufi music",
-            "What's your music diversity like?",
-            "Who are your Pakistani artists?"
+            "Who are your favorite rock artists?",
+            "What indie music do you listen to?",
+            "How do your music tastes connect?"
           ].map((prompt) => (
             <button
               key={prompt}
@@ -169,6 +198,7 @@ export default function ChatWithAkriti() {
               {prompt}
             </button>
           ))}
+        </div>
         </div>
       </div>
     </div>

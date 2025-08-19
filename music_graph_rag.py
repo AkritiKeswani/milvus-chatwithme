@@ -652,7 +652,7 @@ Relationship descriptions:
         prompt = ChatPromptTemplate.from_messages([
             (
                 "human",
-                """Use the following pieces of retrieved context about musical preferences and listening habits to answer the question. If there is not enough information in the retrieved context to answer the question, just say that you don't know.
+                """Use the following pieces of retrieved context about musical preferences and listening habits to answer the question. Work with the available information to provide the best possible answer about the music taste and preferences. If you can make reasonable inferences from the context, please do so.
 
 Question: {question}
 Context: {context}

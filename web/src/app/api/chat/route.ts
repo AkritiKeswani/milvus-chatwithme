@@ -19,15 +19,17 @@ export async function POST(request: NextRequest) {
     // Path to our Python backend (parent directory)
     const pythonBackendPath = path.join(process.cwd(), '..');
     
-    // Execute the Python script with the query as an argument
+    // Execute the Python script with the query as an argument (auto-activate venv)
+    const pythonPath = path.join(pythonBackendPath, 'venv', 'bin', 'python3');
     const { stdout, stderr } = await execAsync(
-      `cd "${pythonBackendPath}" && source venv/bin/activate && OPENAI_API_KEY="${process.env.OPENAI_API_KEY}" python3 web_query.py "${message.replace(/"/g, '\\"')}"`,
+      `"${pythonPath}" web_query.py "${message.replace(/"/g, '\\"')}"`,
       { 
         timeout: 30000, // 30 second timeout
+        cwd: pythonBackendPath,
         env: { 
           ...process.env,
           PYTHONPATH: pythonBackendPath,
-          OPENAI_API_KEY: process.env.OPENAI_API_KEY
+          OPENAI_API_KEY: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY
         }
       }
     );

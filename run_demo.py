@@ -6,6 +6,7 @@ Supports both local music files and demo datasets
 """
 
 from music_graph_rag import MusicGraphRAG
+from akriti_real_music_data import AKRITI_REAL_MUSIC_DATA
 
 # Demo dataset based on your Spotify interface
 SPOTIFY_DEMO_DATA = [
@@ -91,17 +92,17 @@ SPOTIFY_DEMO_DATA = [
 ]
 
 def main():
-    print("🎵 Music Graph RAG Demo")
+    print("🎵 Music Graph RAG Demo - Akriti's REAL Music Taste")
     print("=" * 60)
     print("📊 Compare Naive RAG vs Graph RAG with LLM Reranking")
-    print("Based on your musical preferences from Spotify:")
-    print("📻 Radio: SZA, Drake, Fleetwood Mac, Post Malone, Taylor Swift")
-    print("⭐ Artists: Post Malone, Drake, Kendrick Lamar, Billie Eilish, Taylor Swift")
-    print("🕉️ Sufi: Kaavish, Abida Parveen, Qurat-ul-Ain Balouch")
+    print("Based on your ACTUAL Spotify playlists:")
+    print("🏠 House: RÜFÜS DU SOL, Lane 8, Swedish House Mafia, Elderbrook")
+    print("🎸 Indie: Arctic Monkeys, Radiohead, Bon Iver, Grizzly Bear, Death Cab")
+    print("🤠 Country: Morgan Wallen, Brooks & Dunn, Dan + Shay, Old Dominion")
     print("=" * 60)
     
-    # Initialize with demo data
-    music_rag = MusicGraphRAG(demo_data=SPOTIFY_DEMO_DATA, collection_prefix="demo")
+    # Initialize with YOUR REAL music data
+    music_rag = MusicGraphRAG(demo_data=AKRITI_REAL_MUSIC_DATA, collection_prefix="akriti_real")
     
     try:
         # Setup the system

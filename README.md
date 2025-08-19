@@ -36,18 +36,61 @@ This implementation follows the complete [Milvus Graph RAG tutorial](https://mil
 
 ## Setup
 
-1. **Install Dependencies**:
+### Prerequisites
+- Python 3.8+
+- Node.js 18+ (for web interface)
+- OpenAI API key
+
+### 1. Python Backend Setup
+
+1. **Create and activate virtual environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. **Install Python dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Configure OpenAI API Key**:
-   Edit `config.py` and replace the placeholder with your actual OpenAI API key:
-   ```python
-   os.environ["OPENAI_API_KEY"] = "your-actual-api-key-here"
+3. **Configure OpenAI API Key**:
+   Create a `.env` file in the project root:
+   ```bash
+   echo "OPENAI_API_KEY=your-actual-api-key-here" > .env
+   ```
+   
+   Or export it in your shell:
+   ```bash
+   export OPENAI_API_KEY="your-actual-api-key-here"
    ```
 
-3. **Set Your Music Directories**:
+### 2. Web Interface Setup (Optional)
+
+1. **Navigate to web directory**:
+   ```bash
+   cd web
+   ```
+
+2. **Install Node.js dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Create web environment file**:
+   ```bash
+   echo "OPENAI_API_KEY=your-actual-api-key-here" > .env.local
+   ```
+
+4. **Start the web application**:
+   ```bash
+   # Make sure to source the parent .env file first
+   source ../.env && npm run dev
+   ```
+
+   The web app will be available at [http://localhost:3000](http://localhost:3000)
+
+### 3. Set Your Music Directories (Optional)
    Edit `run_music_rag.py` and update the `music_directories` list with your actual music folder paths:
    ```python
    music_directories = [
