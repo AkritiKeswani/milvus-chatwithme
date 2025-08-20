@@ -1,193 +1,165 @@
-# Music Graph RAG System 🎵
+# Milvus Chat with Me - Music Graph RAG
 
-A complete Graph-based Retrieval Augmented Generation system for exploring your musical taste and collection. Features **side-by-side comparison** of Naive RAG vs Graph RAG with LLM reranking, showing the power of knowledge graphs for music discovery.
+A Next.js web application that showcases Graph RAG (Retrieval-Augmented Generation) technology powered by Milvus vector database. Chat with Akriti about her music taste using advanced AI knowledge retrieval!
 
-## Features
-
-- 🕸️ **Complete Graph RAG Pipeline**: NER → Subgraph Expansion → LLM Reranking
-- ⚖️ **Method Comparison**: See Graph RAG vs Naive RAG results side-by-side
-- 🎵 **Music Intelligence**: Understands artists, genres, cultural connections, and musical relationships
-- 💾 **Milvus Integration**: Efficient vector storage with 3 separate collections (entities, relations, passages)
-- 🧠 **LLM Reranking**: Uses Chain-of-Thought reasoning to select most relevant relationships
-- 🎯 **Interactive Demo**: Ready-to-run with Spotify-based demo data
-
-## How Graph RAG Works
-
-Unlike traditional RAG that just searches text chunks, Graph RAG builds a knowledge graph:
-
-1. **Knowledge Graph**: Creates entities (artists, genres) and relations (collaborations, influences)
-2. **NER Extraction**: Finds relevant entities in your query
-3. **Subgraph Expansion**: Uses adjacency matrices to discover connected relationships  
-4. **Milvus Search**: Vector similarity search within the expanded subgraph
-5. **LLM Reranking**: Selects most relevant relations using reasoning
-6. **Final Answer**: Generates response from carefully selected context
-
-**Example**: Query *"What Sufi music do I like?"* → Finds Kaavish entity → Expands to Sufi relationships → Ranks by relevance → Returns rich cultural context
-
-## Technical Implementation
-
-This implementation follows the complete [Milvus Graph RAG tutorial](https://milvus.io/docs/graph_rag_with_milvus.md) with all advanced features:
-
-- **Adjacency Matrices**: Proper entity-relation, entity-entity, and relation-relation matrices using `scipy.sparse.csr_matrix`
-- **Multi-degree Expansion**: Matrix multiplication for 1-degree, 2-degree, or higher graph traversal
-- **Similarity Thresholds**: Configurable filtering with `entity_sim_thresh` and `relation_sim_thresh`
-- **Correct ID Mapping**: Proper mapping between candidate list indices and original relation IDs in LLM reranking
-- **Three-Collection Architecture**: Separate Milvus collections for optimal graph construction and retrieval
-
-## Setup
+## 🚀 **Quick Start (Local Development)**
 
 ### Prerequisites
+- Node.js 18+ 
 - Python 3.8+
-- Node.js 18+ (for web interface)
 - OpenAI API key
 
-### 1. Python Backend Setup
-
-1. **Create and activate virtual environment**:
+### Setup
+1. **Clone and install dependencies:**
    ```bash
+   git clone <your-repo>
+   cd milvus-chatwithme
+   
+   # Install Python dependencies
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-2. **Install Python dependencies**:
-   ```bash
    pip install -r requirements.txt
-   ```
-
-3. **Configure OpenAI API Key**:
-   Create a `.env` file in the project root:
-   ```bash
-   echo "OPENAI_API_KEY=your-actual-api-key-here" > .env
-   ```
    
-   Or export it in your shell:
-   ```bash
-   export OPENAI_API_KEY="your-actual-api-key-here"
-   ```
-
-### 2. Web Interface Setup (Optional)
-
-1. **Navigate to web directory**:
-   ```bash
+   # Install Node.js dependencies
    cd web
-   ```
-
-2. **Install Node.js dependencies**:
-   ```bash
    npm install
    ```
 
-3. **Create web environment file**:
+2. **Set up environment variables:**
    ```bash
-   echo "OPENAI_API_KEY=your-actual-api-key-here" > .env.local
+   # In the root directory, create .env file
+   echo "OPENAI_API_KEY=your_actual_openai_api_key_here" > .env
    ```
 
-4. **Start the web application**:
+3. **Run the application:**
    ```bash
-   # Make sure to source the parent .env file first
-   source ../.env && npm run dev
+   # Terminal 1: Start Python backend (Graph RAG)
+   cd ..  # Back to root
+   source venv/bin/activate
+   python web_query.py
+   
+   # Terminal 2: Start Next.js frontend
+   cd web
+   npm run dev
    ```
 
-   The web app will be available at [http://localhost:3000](http://localhost:3000)
+4. **Open your browser:** http://localhost:3000
 
-### 3. Set Your Music Directories (Optional)
-   Edit `run_music_rag.py` and update the `music_directories` list with your actual music folder paths:
-   ```python
-   music_directories = [
-       "/Users/yourname/Music",
-       "/Users/yourname/iTunes/iTunes Media/Music",
-       "/Volumes/External/Music",
-       # Add your music directories here
-   ]
+## 🌐 **Deploy to Vercel (Production)**
+
+### Option 1: Vercel Dashboard (Recommended)
+
+1. **Push your code to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Ready for Vercel deployment"
+   git push origin main
    ```
 
-## Usage
+2. **Deploy on Vercel:**
+   - Go to [vercel.com](https://vercel.com)
+   - Sign in with GitHub
+   - Click "New Project"
+   - Import your repository
+   - Set the **Root Directory** to `web`
+   - Click "Deploy"
 
-### Quick Demo
+3. **Add Environment Variables:**
+   - In your Vercel project dashboard
+   - Go to **Settings** → **Environment Variables**
+   - Add: `OPENAI_API_KEY` = `your_actual_openai_api_key_here`
+   - Redeploy
+
+### Option 2: Vercel CLI
+
+1. **Install Vercel CLI:**
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Deploy:**
+   ```bash
+   cd web
+   vercel
+   # Follow prompts, set root directory to current folder
+   # Add environment variables when prompted
+   ```
+
+3. **Set environment variables:**
+   ```bash
+   vercel env add OPENAI_API_KEY
+   # Enter your OpenAI API key
+   vercel --prod  # Deploy to production
+   ```
+
+## 🔧 **How It Works**
+
+### Architecture
+- **Frontend:** Next.js 15 with TypeScript
+- **Backend:** Python Graph RAG system via API routes
+- **AI Engine:** OpenAI GPT models for intelligent responses
+- **Knowledge Base:** Milvus vector database for music knowledge
+
+### Graph RAG Process
+1. **Entity Extraction:** Identifies artists/genres in user queries
+2. **Subgraph Expansion:** Traverses relationships in knowledge graph
+3. **Context Retrieval:** Gets relevant passages from Milvus
+4. **Response Generation:** Creates intelligent answers using AI
+
+## 📁 **Project Structure**
+
+```
+milvus-chatwithme/
+├── web/                    # Next.js frontend (deploy this to Vercel)
+│   ├── src/app/api/chat/  # Chat API endpoint
+│   ├── src/app/page.tsx   # Main chat interface
+│   └── vercel.json        # Vercel configuration
+├── music_graph_rag.py     # Core Graph RAG implementation
+├── web_query.py           # Python backend for web queries
+├── config.py              # OpenAI and Milvus configuration
+├── requirements.txt       # Python dependencies
+└── .env                   # Environment variables (local only)
+```
+
+## 🌍 **Environment Variables**
+
+### Local Development (.env file)
 ```bash
-python run_demo.py
+OPENAI_API_KEY=your_actual_openai_api_key_here
 ```
 
-This will:
-1. Load demo dataset with your musical preferences  
-2. Build the knowledge graph (entities, relations, passages)
-3. Create embeddings and store in Milvus (3 collections)
-4. Start interactive comparison mode (Graph RAG vs Naive RAG)
+### Vercel Deployment
+- Set `OPENAI_API_KEY` in Vercel dashboard
+- **Never commit your .env file to Git!**
 
-### Example Queries
+## 🎯 **Features**
 
-- "What genres of music do I listen to most?"
-- "Which artists have multiple albums in my collection?"
-- "What genres does Post Malone span?"
-- "Tell me about my Pakistani artists"
-- "Show me artists that span multiple genres"
-- "What's the diversity of my music taste?"
+- **Intelligent Music Chat:** Ask about artists, genres, and music trends
+- **Graph RAG Technology:** Advanced knowledge retrieval using Milvus
+- **Real-time Responses:** Instant AI-powered answers
+- **Modern UI:** Clean, responsive chat interface
+- **Vercel Ready:** Fully deployable serverless architecture
 
-### Programmatic Usage
+## 🚨 **Important Notes**
 
-```python
-from music_graph_rag import MusicGraphRAG
-from run_demo import SPOTIFY_DEMO_DATA
+- **Cost Efficiency:** Uses OpenAI API efficiently with smart query handling
+- **Security:** API keys are stored securely in environment variables
+- **Scalability:** Built for Vercel's serverless architecture
+- **Performance:** Optimized for fast response times
 
-# Initialize with demo data (currently the only supported input)
-music_rag = MusicGraphRAG(demo_data=SPOTIFY_DEMO_DATA)
+## 🆘 **Troubleshooting**
 
-# Build the graph and create embeddings
-music_rag.build_graph_structure()
-music_rag.create_embeddings_and_store()
+### Common Issues
+1. **"next: command not found"** → Run `npm install` in web directory
+2. **Python import errors** → Activate virtual environment first
+3. **OpenAI API errors** → Check API key and billing status
+4. **Vercel deployment fails** → Ensure root directory is set to `web`
 
-# Query with Graph RAG vs Naive RAG comparison
-answer = music_rag.query_music_knowledge_with_llm_reranking(
-    "What genres do I listen to?", 
-    compare_with_naive=True
-)
-print(answer)
-```
+### Support
+- Check Vercel deployment logs for errors
+- Verify environment variables are set correctly
+- Ensure all dependencies are installed
 
-## File Structure
+---
 
-- `config.py` - Configuration for OpenAI API and Milvus client
-- `music_graph_rag.py` - Main Music Graph RAG implementation
-- `run_demo.py` - Interactive demo script
-- `requirements.txt` - Python dependencies
-- `milvus.db` - Local Milvus database file (created on first run)
-
-## Current Data Source
-
-**Note**: This implementation currently works with structured demo data only (Spotify-based musical preferences). It does **not** scan local music files or directories. The demo data includes:
-
-- Artists: Post Malone, Drake, Taylor Swift, Kaavish, Abida Parveen, etc.
-- Genres: Hip-Hop, Pop, Sufi, R&B, Classic Rock, Country
-- Cultural connections and musical relationships
-- **Passages**: Descriptive text about each musical relationship
-- **Mappings**: 
-  - `entityid_2_relationids`: Maps entity IDs to related relation IDs
-  - `relationid_2_passageids`: Maps relation IDs to passage IDs
-
-## Customization
-
-You can extend the system by:
-
-1. **Adding new relationship types** in `_create_passage_from_metadata()`
-2. **Modifying metadata extraction** in `_extract_audio_metadata()`
-3. **Customizing the query prompts** in `query_music_knowledge()`
-4. **Adding new audio formats** in `_is_audio_file()`
-
-## Troubleshooting
-
-- **No music found**: Make sure your directory paths are correct and contain audio files
-- **Metadata extraction fails**: Some files may not have proper ID3 tags or metadata
-- **OpenAI API errors**: Check that your API key is valid and has sufficient credits
-- **Milvus connection issues**: The system uses local Milvus Lite by default, which should work out of the box
-
-## Examples from Your Collection
-
-Once set up, you can ask questions like:
-
-> **Query**: "What genres of music do I listen to most?"
-> 
-> **Response**: "Based on your music collection, you primarily listen to Rock (45% of collection), Pop (25%), Jazz (15%), Classical (10%), and Electronic (5%). Your rock collection includes artists like The Beatles, Led Zeppelin, and Pink Floyd, with albums spanning from the 1960s to modern rock."
-
-> **Query**: "Tell me about artists that span multiple genres"
-> 
-> **Response**: "Several artists in your collection work across multiple genres: David Bowie appears in both Rock and Electronic categories, Miles Davis spans Jazz and Fusion, and Radiohead bridges Alternative Rock and Electronic music. This shows your appreciation for artists who experiment with different musical styles."
+**Ready to deploy?** Follow the Vercel deployment steps above and your Graph RAG music chat will be live on the internet! 🎵✨

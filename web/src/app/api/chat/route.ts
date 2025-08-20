@@ -40,10 +40,12 @@ export async function POST(request: NextRequest) {
 
     try {
       const result = JSON.parse(stdout.trim());
-      const response = result.response || "I'm having trouble right now. Try asking about my music taste!";
+      // Clean up the response by removing excess spacing and formatting
+      const response = cleanResponse(result.response || "I'm having trouble right now. Try asking about my music taste!");
       return NextResponse.json({ response });
     } catch (parseError) {
-      const response = stdout.trim() || "I'm having trouble right now. Try asking about my music taste!";
+      // Clean up the raw stdout response as well
+      const response = cleanResponse(stdout.trim() || "I'm having trouble right now. Try asking about my music taste!");
       return NextResponse.json({ response });
     }
 
@@ -56,6 +58,24 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Function to clean up response formatting
+function cleanResponse(response: string): string {
+  return response
+    // Remove multiple consecutive newlines and replace with single newlines
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    // Remove excessive spacing around punctuation
+    .replace(/\s+([.!?])/g, '$1')
+    // Remove leading/trailing whitespace
+    .trim()
+    // Ensure consistent spacing after periods
+    .replace(/\.\s*/g, '. ')
+    // Remove multiple spaces
+    .replace(/\s+/g, ' ')
+    // Clean up any remaining formatting artifacts
+    .replace(/\*\*/g, '') // Remove markdown bold markers
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Remove markdown links
 }
 
 export async function GET() {
