@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import OpenAI from 'openai';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Initialize Milvus client (same as your Python config)
-const milvusClient = new MilvusClient({
-  address: process.env.MILVUS_URI || 'localhost:19530',
-  username: process.env.MILVUS_USERNAME || '',
-  password: process.env.MILVUS_PASSWORD || '',
 });
 
 // EXACT same data structure as your Python implementation
@@ -97,17 +89,17 @@ const AKRITI_REAL_MUSIC_DATA = [
   }
 ];
 
-// EXACT same class structure as your Python MusicGraphRAG
+// EXACT same class structure as your Python implementation
 class MusicGraphRAG {
-  private musicDataset: any[];
+  private musicDataset: Array<{passage: string, triplets: string[][]}>;
   private entities: string[];
   private relations: string[];
   private passages: string[];
   private entityId2RelationIds: Map<number, number[]>;
   private relationId2PassageIds: Map<number, number[]>;
-  private entityRelationAdj: any;
-  private entityAdj1Degree: any;
-  private relationAdj1Degree: any;
+  private entityRelationAdj: number[][] = [];
+  private entityAdj1Degree: number[][] = [];
+  private relationAdj1Degree: number[][] = [];
   private collectionPrefix: string;
 
   constructor(collectionPrefix: string = "music") {
@@ -288,10 +280,10 @@ class MusicGraphRAG {
     // Start with relations directly connected to entities
     let expandedRelations = new Set<number>();
     
-           for (const entityId of entityIds) {
-         const relationIds = this.entityId2RelationIds.get(entityId) || [];
-         relationIds.forEach(id => expandedRelations.add(id));
-       }
+    for (const entityId of entityIds) {
+      const relationIds = this.entityId2RelationIds.get(entityId) || [];
+      relationIds.forEach(id => expandedRelations.add(id));
+    }
     
     // Expand to target degree (same as your matrix multiplication)
     for (let degree = 1; degree < targetDegree; degree++) {
@@ -306,7 +298,7 @@ class MusicGraphRAG {
         }
       }
       
-             newRelations.forEach(id => expandedRelations.add(id));
+      newRelations.forEach(id => expandedRelations.add(id));
     }
     
     // Get relation texts
@@ -350,13 +342,13 @@ Please return a JSON response in this format:
       
       try {
         const parsed = JSON.parse(response);
-        const selectedIndices = parsed.useful_relationships.map((rel: string) => {
+        const selectedIndices = parsed.useful_relationships.map((rel: string, idx: number) => {
           const match = rel.match(/\[(\d+)\]/);
           return match ? parseInt(match[1]) : 0;
         });
         
         return selectedIndices.map(idx => relationCandidates[idx]).filter(Boolean);
-      } catch (parseError) {
+      } catch {
         // Fallback: return top candidates
         return relationCandidates.slice(0, topK);
       }
@@ -377,9 +369,9 @@ Please return a JSON response in this format:
     response += `**Relations Retrieved:** ${topRelations.length}\n\n`;
     
     response += "**🎯 Key Insights from Knowledge Graph:**\n";
-         topRelations.forEach((relation, idx: number) => {
-       response += `${idx + 1}. ${relation}\n`;
-     });
+    topRelations.forEach((relation, idx: number) => {
+      response += `${idx + 1}. ${relation}\n`;
+    });
     
     response += "\n**🚀 This demonstrates the power of Graph RAG with Milvus technology!** I traversed relationships between entities, expanded subgraphs using adjacency matrices, and used AI to rerank the most relevant connections.";
     
